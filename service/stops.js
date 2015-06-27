@@ -36,15 +36,26 @@ var stopsAround = function(req, res, next) {
 	var lat = parseFloat(req.params.lat);
 	var lon = parseFloat(req.params.lon);
 	
+	getStopsAround(lat, lon, distance).then(function(stops) {
+		res.send(stops);
+		next();		
+	}).catch(function(err) {
+		console.log(err.stack || err);
+		res.send(500, err);
+		next();				
+	}).done();
+}
+
+
+var getStopsAround = module.exports.getStopsAround = function(lat, lon, distance) {	
 	//TODO To include all instances of the stop?
 	var extension = 0;
 	
 	var point = new GeoPoint(lat, lon);
 	var bounds = point.boundingCoordinates((distance + extension) / 1000.0, undefined, true);
 	
-	overpass('[out:json];node["highway"="bus_stop"]["name"](' + bounds[0]._degLat + ',' + bounds[0]._degLon + ',' + bounds[1]._degLat + ',' + bounds[1]._degLon + ');out body;')
-	.then(function(data) {
-		
+	return overpass('[out:json];node["highway"="bus_stop"]["name"](' + bounds[0]._degLat + ',' + bounds[0]._degLon + ',' + bounds[1]._degLat + ',' + bounds[1]._degLon + ');out body;')
+	.then(function(data) {		
 		var stops = data.features.slice()
 		.filter(function(feature) {
 			return isNaN(parseInt(feature.properties.tags.name));
@@ -86,13 +97,7 @@ var stopsAround = function(req, res, next) {
 				points : feature.points
 			};
 		});
-				
-		res.send(stops);
-		next();		
-	})
-	.catch(function(err) {
-		console.log(err.stack || err);
-		res.send(500, err);
-		next();		
-	}).done();
+
+		return stops;
+	});
 }
